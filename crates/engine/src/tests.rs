@@ -820,6 +820,24 @@ fn home_shading_fills_whole_selected_cells() {
     assert!(t.rows[1].cells.iter().all(|c| c.props.shading.is_none()), "the other row is untouched");
     run(&mut s, "edit.undo", json!({}));
     assert!(table(&s).rows[0].cells.iter().all(|c| c.props.shading.is_none()), "one undo step");
+    // One whole cell selected: that cell alone.
+    let ti = s.doc.body.iter().position(|b| b.as_table().is_some()).expect("a table") as u32;
+    run(&mut s, "caret.set", json!({"pos": {"story": "body", "path": [ti, 0, 0, 0], "off": 0}}));
+    run(&mut s, "table.selectCell", json!({}));
+    run(&mut s, "para.shading", json!({"color": "1F4E79"}));
+    let t = table(&s);
+    assert_eq!(t.rows[0].cells[0].props.shading, wordcraft_doc::props::Rgb::parse("1F4E79"));
+    assert!(t.rows[0].cells[0].blocks[0].as_para().is_some_and(|p| p.props.shading.is_none()));
+    assert!(t.rows[0].cells[1].props.shading.is_none() && t.rows[1].cells.iter().all(|c| c.props.shading.is_none()), "only that cell");
+    run(&mut s, "edit.undo", json!({}));
+    // Text selected inside a cell: its paragraph, not the cell.
+    run(&mut s, "caret.set", json!({"pos": {"story": "body", "path": [ti, 1, 1, 0], "off": 0}}));
+    run(&mut s, "text.insert", json!({"text": "cell"}));
+    run(&mut s, "select.text", json!({"text": "cell"}));
+    run(&mut s, "para.shading", json!({"color": "1F4E79"}));
+    let t = table(&s);
+    assert_eq!(t.rows[1].cells[1].props.shading, None);
+    assert!(t.rows[1].cells[1].blocks[0].as_para().is_some_and(|p| p.props.shading.is_some()));
 }
 
 #[test]
